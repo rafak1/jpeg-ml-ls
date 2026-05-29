@@ -1,4 +1,5 @@
 #include "jpegls_ai.hpp"
+#include "random_ai_logic.hpp"
 #include <iostream>
 #include <vector>
 #include <numeric>
