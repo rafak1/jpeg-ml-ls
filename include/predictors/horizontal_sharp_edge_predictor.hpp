@@ -1,7 +1,6 @@
 #ifndef HORIZONTAL_SHARP_EDGE_PREDICTOR_HPP
 #define HORIZONTAL_SHARP_EDGE_PREDICTOR_HPP
 #include <algorithm>
-#include <cmath>
 
 #include "predictor.hpp"
 

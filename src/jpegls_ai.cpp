@@ -1,12 +1,5 @@
 #include "jpegls_ai.hpp"
 #include "../include/predictors/med_predictor.hpp"
-#include "../include/predictors/paeth_predictor.hpp"
-#include "../include/predictors/left_predictor.hpp"
-#include "../include/predictors/top_predictor.hpp"
-#include "../include/predictors/top_left_predictor.hpp"
-#include "../include/predictors/average_left_top_predictor.hpp"
-#include "../include/predictors/dpcm_predictor.hpp"
-#include "../include/predictors/gradient_predictor.hpp"
 #include <iostream>
 #include <vector>
 #include <algorithm>

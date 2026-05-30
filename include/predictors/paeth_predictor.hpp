@@ -3,7 +3,6 @@
 
 #include "predictor.hpp"
 #include <cmath>
-#include <algorithm>
 
 // Paeth predictor (from PNG)
 class PaethPredictor final : public Predictor {
