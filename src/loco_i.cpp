@@ -1,5 +1,5 @@
 #include "loco_i.hpp"
-#include "med_predictor.hpp"
+#include "../include/predictors/med_predictor.hpp"
 #include <cmath>
 #include <algorithm>
 #include <stdexcept>

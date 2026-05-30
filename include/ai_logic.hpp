@@ -1,7 +1,7 @@
 #ifndef AI_LOGIC_HPP
 #define AI_LOGIC_HPP
 
-#include "predictor.hpp"
+#include "predictors/predictor.hpp"
 #include <vector>
 #include <memory>
 

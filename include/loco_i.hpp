@@ -2,7 +2,7 @@
 #define LOCO_I_HPP
 
 #include "bit_stream.hpp"
-#include "predictor.hpp"
+#include "predictors/predictor.hpp"
 #include <vector>
 #include <cstdint>
 #include <memory>

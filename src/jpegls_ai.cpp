@@ -1,15 +1,17 @@
 #include "jpegls_ai.hpp"
-#include "med_predictor.hpp"
-#include "paeth_predictor.hpp"
-#include "left_predictor.hpp"
-#include "top_predictor.hpp"
-#include "top_left_predictor.hpp"
-#include "average_left_top_predictor.hpp"
-#include "dpcm_predictor.hpp"
-#include "gradient_predictor.hpp"
+#include "../include/predictors/med_predictor.hpp"
+#include "../include/predictors/paeth_predictor.hpp"
+#include "../include/predictors/left_predictor.hpp"
+#include "../include/predictors/top_predictor.hpp"
+#include "../include/predictors/top_left_predictor.hpp"
+#include "../include/predictors/average_left_top_predictor.hpp"
+#include "../include/predictors/dpcm_predictor.hpp"
+#include "../include/predictors/gradient_predictor.hpp"
 #include <iostream>
 #include <vector>
 #include <algorithm>
+
+#include "predictors/predictor_factory.hpp"
 
 JpeglsAI::JpeglsAI(std::unique_ptr<AILogic> ai_logic, const int chunk_height)
     : ai_logic_(std::move(ai_logic)), chunk_height_(chunk_height) {
@@ -23,27 +25,7 @@ JpeglsAI::~JpeglsAI() {
 }
 
 std::unique_ptr<Predictor> JpeglsAI::getPredictorForType(const PredictorType type) {
-    switch (type) {
-        case PredictorType::MED:
-            return std::make_unique<MEDPredictor>();
-        case PredictorType::PAETH:
-            return std::make_unique<PaethPredictor>();
-        case PredictorType::LEFT:
-            return std::make_unique<LeftPredictor>();
-        case PredictorType::TOP:
-            return std::make_unique<TopPredictor>();
-        case PredictorType::TOP_LEFT:
-            return std::make_unique<TopLeftPredictor>();
-        case PredictorType::AVERAGE_LEFT_TOP:
-            return std::make_unique<AverageLeftTopPredictor>();
-        case PredictorType::DPCM:
-            return std::make_unique<DPCMPredictor>();
-        case PredictorType::GRADIENT:
-            return std::make_unique<GradientPredictor>();
-        default:
-            std::cerr << "Unknown predictor type, falling back to MED." << std::endl;
-            return std::make_unique<MEDPredictor>();
-    }
+    return PredictorFactory::create(type);
 }
 
 std::vector<uint8_t> JpeglsAI::encode(const std::vector<unsigned char>& image_data, const int width, const int height) {

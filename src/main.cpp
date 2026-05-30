@@ -54,8 +54,18 @@ int main() {
     auto charls_end = std::chrono::high_resolution_clock::now();
 
     charls_encoded_data.resize(charls_bytes_written);
-
     std::cout << "CharLS encoded successfully." << std::endl;
+
+    auto charls_decode_start = std::chrono::high_resolution_clock::now();
+    charls::jpegls_decoder decoder;
+    decoder.source(charls_encoded_data);
+    decoder.read_header();
+    std::vector<uint8_t> charls_decoded_image(decoder.destination_size());
+    decoder.decode(charls_decoded_image);
+    auto charls_decode_end = std::chrono::high_resolution_clock::now();
+
+    assert(original_image == charls_decoded_image && "CharLS implementation failed round trip!");
+    std::cout << "CharLS decoded successfully." << std::endl;
 
     // --- Comparison ---
     std::cout << "\n--- Compression Results ---" << std::endl;
@@ -73,11 +83,13 @@ int main() {
     std::chrono::duration<double, std::milli> our_duration = our_end - our_start;
     std::chrono::duration<double, std::milli> our_decode_duration = our_decode_end - our_decode_start;
     std::chrono::duration<double, std::milli> charls_duration = charls_end - charls_start;
+    std::chrono::duration<double, std::milli> charls_decode_duration = charls_decode_end - charls_decode_start;
 
     std::cout << "\n--- Speed Results ---" << std::endl;
     std::cout << "Our Encode Time:    " << our_duration.count() << " ms" << std::endl;
     std::cout << "Our Decode Time:    " << our_decode_duration.count() << " ms" << std::endl;
     std::cout << "CharLS Encode Time: " << charls_duration.count() << " ms" << std::endl;
+    std::cout << "CharLS Decode Time: " << charls_decode_duration.count() << " ms" << std::endl;
 
     return 0;
 }

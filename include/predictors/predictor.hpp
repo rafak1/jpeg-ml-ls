@@ -10,7 +10,20 @@ enum class PredictorType {
     TOP_LEFT = 4,
     AVERAGE_LEFT_TOP = 5,
     DPCM = 6,
-    GRADIENT = 7 // Replacing ZeroPredictor
+    GRADIENT = 7,
+    JPEG5 = 8,
+    JPEG6 = 9,
+    STRICT_MEDIAN = 10,
+    MULTIPLICATIVE = 11,
+    PLANAR_BALANCED = 12,
+    ASYMMETRIC_TEXTURE = 13,
+    HORIZ_SHARP = 14,
+    VERT_SHARP = 15,
+    MAX_FILTER = 16,
+    MIN_FILTER = 17,
+    HARMONIC_MEAN = 18,
+    MIDRANGE = 19,
+    COUNT = 20              // Speedup trick (Has always be last)!
 };
 
 // Abstract base class for all predictors
