@@ -5,7 +5,6 @@
 #include "predictors/predictor_factory.hpp"
 #include <random>
 #include <memory>
-#include <vector>
 
 // Simple AI that randomly chooses a predictor
 class RandomAILogic final : public AILogic {
@@ -19,7 +18,7 @@ public:
           distrib_(0, PredictorFactory::getCount() - 1)
     {}
 
-    std::unique_ptr<Predictor> getPredictor(const std::vector<unsigned char>& chunk_content) override {
+    std::unique_ptr<Predictor> getPredictor(const std::vector<unsigned char>& chunk_content, int width, int height) override {
         const auto random_type = static_cast<PredictorType>(distrib_(gen_));
         return PredictorFactory::create(random_type);
     }

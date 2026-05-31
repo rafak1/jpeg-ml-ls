@@ -9,7 +9,7 @@
 class AILogic {
 public:
     virtual ~AILogic() = default;
-    virtual std::unique_ptr<Predictor> getPredictor(const std::vector<unsigned char>& chunk_content) = 0;
+    virtual std::unique_ptr<Predictor> getPredictor(const std::vector<unsigned char>& chunk_content, int width, int height) = 0;
 };
 
 #endif // AI_LOGIC_HPP
