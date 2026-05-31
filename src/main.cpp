@@ -23,7 +23,7 @@ int main() {
     // --- Run with RandomAILogic ---
     std::cout << "--- Compressing with RandomAILogic ---" << std::endl;
     auto random_ai_logic = std::make_unique<RandomAILogic>();
-    JpeglsAI random_ai_ctx(std::move(random_ai_logic), 16, 16);
+    JpeglsAI random_ai_ctx(std::move(random_ai_logic), 128, 128);
 
     auto random_start = std::chrono::high_resolution_clock::now();
     const std::vector<uint8_t> random_encoded_data = random_ai_ctx.encode(original_image, width, height);
@@ -36,7 +36,7 @@ int main() {
     // --- Run with DeterministicBestLogic ---
     std::cout << "\n--- Compressing with DeterministicBestLogic ---" << std::endl;
     auto deterministic_ai_logic = std::make_unique<DeterministicBestLogic>();
-    JpeglsAI deterministic_ai_ctx(std::move(deterministic_ai_logic), 16, 16);
+    JpeglsAI deterministic_ai_ctx(std::move(deterministic_ai_logic), 128, 128);
 
     auto deterministic_start = std::chrono::high_resolution_clock::now();
     const std::vector<uint8_t> deterministic_encoded_data = deterministic_ai_ctx.encode(original_image, width, height);
