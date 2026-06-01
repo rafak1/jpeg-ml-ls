@@ -25,6 +25,7 @@
 #include "min_predictor.hpp"
 #include "harmonic_mean_predictor.hpp"
 #include "mid_range_predictor.hpp"
+#include "mlp_predictor.hpp"
 
 #include <array>
 #include <memory>
@@ -60,7 +61,8 @@ private:
         &make<MaxPredictor>,                  // 16
         &make<MinPredictor>,                  // 17
         &make<HarmonicMeanPredictor>,         // 18
-        &make<MidrangePredictor>              // 19
+        &make<MidrangePredictor>,             // 19
+        &make<MLPPredictor>                   // 20
     };
 
 public:

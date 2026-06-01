@@ -23,7 +23,8 @@ enum class PredictorType {
     MIN_FILTER = 17,
     HARMONIC_MEAN = 18,
     MIDRANGE = 19,
-    COUNT = 20              // Speedup trick (Has always be last)!
+    MLP = 20,
+    COUNT = 21
 };
 
 // Abstract base class for all predictors
