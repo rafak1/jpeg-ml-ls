@@ -10,14 +10,32 @@
 #include <cstdint>
 #include <chrono>
 
-int main() {
-    // Create a larger dummy image for better timing measurements
-    constexpr int width = 512;
-    constexpr int height = 512;
-    std::vector<unsigned char> original_image(width * height);
-    for (int y = 0; y < height; ++y) {
-        for (int x = 0; x < width; ++x) {
-            original_image[y * width + x] = static_cast<unsigned char>((x + y) % 256);
+#include <fstream>
+
+int main(int argc, char** argv) {
+    int width = 512;
+    int height = 512;
+    std::vector<unsigned char> original_image;
+
+    if (argc > 3) {
+        width = std::stoi(argv[2]);
+        height = std::stoi(argv[3]);
+        std::ifstream ifs(argv[1], std::ios::binary);
+        if (!ifs) {
+            std::cerr << "Failed to open file: " << argv[1] << std::endl;
+            return 1;
+        }
+        original_image.resize(width * height);
+        ifs.read((char*)original_image.data(), width * height);
+        if (ifs.gcount() != (std::streamsize)(width * height)) {
+            std::cerr << "Warning: Only read " << ifs.gcount() << " of " << width * height << " bytes." << std::endl;
+        }
+    } else {
+        original_image.resize(width * height);
+        for (int y = 0; y < height; ++y) {
+            for (int x = 0; x < width; ++x) {
+                original_image[y * width + x] = static_cast<unsigned char>((x + y) % 256);
+            }
         }
     }
 

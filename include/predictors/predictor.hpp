@@ -1,6 +1,8 @@
 #ifndef PREDICTOR_HPP
 #define PREDICTOR_HPP
 
+#include <cstdint>
+
 // Enum to identify predictor types, used by the AI context
 enum class PredictorType {
     MED = 0,
@@ -24,7 +26,8 @@ enum class PredictorType {
     HARMONIC_MEAN = 18,
     MIDRANGE = 19,
     MLP = 20,
-    COUNT = 21
+    MLP_5X5 = 21,
+    COUNT = 22
 };
 
 // Abstract base class for all predictors
@@ -32,6 +35,12 @@ class Predictor {
 public:
     virtual ~Predictor() = default;
     virtual int predict(int a, int b, int c) = 0;
+    
+    // Advanced prediction with more context (default calls simple predict)
+    virtual int predict(int a, int b, int c, const uint8_t* /*data*/, int /*x*/, int /*y*/, int /*width*/) {
+        return predict(a, b, c);
+    }
+
     [[nodiscard]] virtual PredictorType getType() const = 0;
 };
 
