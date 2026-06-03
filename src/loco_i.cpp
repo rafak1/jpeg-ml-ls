@@ -131,7 +131,7 @@ std::vector<uint8_t> LocoIEncoder::encode(const std::vector<uint8_t>& image_data
             int Q, sign;
             getContext(d1, d2, d3, Q, sign);
 
-            int px = predictor_->predict(a, b, c);
+            int px = predictor_->predict(a, b, c, image_data.data(), x, y, width);
 
             px += sign * C_[Q];
             if (px > MAXVAL) px = MAXVAL;
@@ -182,7 +182,7 @@ std::vector<uint8_t> LocoIEncoder::decode(const std::vector<uint8_t>& encoded_da
             int Q, sign;
             getContext(d1, d2, d3, Q, sign);
 
-            int px = predictor_->predict(a, b, c);
+            int px = predictor_->predict(a, b, c, decoded_image.data(), x, y, width);
 
             px += sign * C_[Q];
             if (px > MAXVAL) px = MAXVAL;

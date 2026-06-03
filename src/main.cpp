@@ -1,6 +1,8 @@
 #include "jpegls_ai.hpp"
 #include "random_ai_logic.hpp"
 #include "deterministic_best_logic.hpp"
+#include "non_ai_best_logic.hpp"
+#include "selected_one_logic.hpp"
 #include <charls/charls.h>
 #include <iostream>
 #include <vector>
@@ -9,14 +11,32 @@
 #include <cstdint>
 #include <chrono>
 
-int main() {
-    // Create a larger dummy image for better timing measurements
-    constexpr int width = 512;
-    constexpr int height = 512;
-    std::vector<unsigned char> original_image(width * height);
-    for (int y = 0; y < height; ++y) {
-        for (int x = 0; x < width; ++x) {
-            original_image[y * width + x] = static_cast<unsigned char>((x + y) % 256);
+#include <fstream>
+
+int main(int argc, char** argv) {
+    int width = 512;
+    int height = 512;
+    std::vector<unsigned char> original_image;
+
+    if (argc > 3) {
+        width = std::stoi(argv[2]);
+        height = std::stoi(argv[3]);
+        std::ifstream ifs(argv[1], std::ios::binary);
+        if (!ifs) {
+            std::cerr << "Failed to open file: " << argv[1] << std::endl;
+            return 1;
+        }
+        original_image.resize(width * height);
+        ifs.read((char*)original_image.data(), width * height);
+        if (ifs.gcount() != (std::streamsize)(width * height)) {
+            std::cerr << "Warning: Only read " << ifs.gcount() << " of " << width * height << " bytes." << std::endl;
+        }
+    } else {
+        original_image.resize(width * height);
+        for (int y = 0; y < height; ++y) {
+            for (int x = 0; x < width; ++x) {
+                original_image[y * width + x] = static_cast<unsigned char>((x + y) % 256);
+            }
         }
     }
 
@@ -46,6 +66,45 @@ int main() {
     assert(original_image == deterministic_decoded_image && "DeterministicBestLogic failed round trip!");
     std::cout << "DeterministicBestLogic round trip successful." << std::endl;
 
+    // --- Run with NonAIBestLogic ---
+    std::cout << "\n--- Compressing with NonAIBestLogic ---" << std::endl;
+    auto non_ai_best_logic = std::make_unique<NonAIBestLogic>();
+    JpeglsAI non_ai_ctx(std::move(non_ai_best_logic), 128, 128);
+
+    auto non_ai_start = std::chrono::high_resolution_clock::now();
+    const std::vector<uint8_t> non_ai_encoded_data = non_ai_ctx.encode(original_image, width, height);
+    auto non_ai_end = std::chrono::high_resolution_clock::now();
+
+    const std::vector<uint8_t> non_ai_decoded_image = non_ai_ctx.decode(non_ai_encoded_data, width, height);
+    assert(original_image == non_ai_decoded_image && "NonAIBestLogic failed round trip!");
+    std::cout << "NonAIBestLogic round trip successful." << std::endl;
+
+    // --- Run with MLPPredictor ---
+    std::cout << "\n--- Compressing with MLP Predictor ---" << std::endl;
+    auto mlp_ai_logic = std::make_unique<SelectedOneLogic>(PredictorType::MLP);
+    JpeglsAI mlp_ai_ctx(std::move(mlp_ai_logic), 128, 128);
+
+    auto mlp_start = std::chrono::high_resolution_clock::now();
+    const std::vector<uint8_t> mlp_encoded_data = mlp_ai_ctx.encode(original_image, width, height);
+    auto mlp_end = std::chrono::high_resolution_clock::now();
+
+    const std::vector<uint8_t> mlp_decoded_image = mlp_ai_ctx.decode(mlp_encoded_data, width, height);
+    assert(original_image == mlp_decoded_image && "MLPPredictor failed round trip!");
+    std::cout << "MLPPredictor round trip successful." << std::endl;
+
+    // --- Run with MLP5x5Predictor ---
+    std::cout << "\n--- Compressing with MLP 5x5 Predictor ---" << std::endl;
+    auto mlp5x5_ai_logic = std::make_unique<SelectedOneLogic>(PredictorType::MLP_5X5);
+    JpeglsAI mlp5x5_ai_ctx(std::move(mlp5x5_ai_logic), 128, 128);
+
+    auto mlp5x5_start = std::chrono::high_resolution_clock::now();
+    const std::vector<uint8_t> mlp5x5_encoded_data = mlp5x5_ai_ctx.encode(original_image, width, height);
+    auto mlp5x5_end = std::chrono::high_resolution_clock::now();
+
+    const std::vector<uint8_t> mlp5x5_decoded_image = mlp5x5_ai_ctx.decode(mlp5x5_encoded_data, width, height);
+    assert(original_image == mlp5x5_decoded_image && "MLP5x5Predictor failed round trip!");
+    std::cout << "MLP5x5Predictor round trip successful." << std::endl;
+
 
     // --- CharLS Implementation ---
     std::cout << "\n--- Compressing with CharLS Library ---" << std::endl;
@@ -66,16 +125,25 @@ int main() {
     std::cout << "Original Size:                 " << original_image.size() << " bytes" << std::endl;
     std::cout << "Random Logic Compressed Size:    " << random_encoded_data.size() << " bytes" << std::endl;
     std::cout << "Deterministic Compressed Size: " << deterministic_encoded_data.size() << " bytes" << std::endl;
+    std::cout << "Non-AI Best Compressed Size:   " << non_ai_encoded_data.size() << " bytes" << std::endl;
+    std::cout << "MLP Compressed Size:           " << mlp_encoded_data.size() << " bytes" << std::endl;
+    std::cout << "MLP 5x5 Compressed Size:       " << mlp5x5_encoded_data.size() << " bytes" << std::endl;
     std::cout << "CharLS Compressed Size:        " << charls_encoded_data.size() << " bytes" << std::endl;
 
     // --- Timing Results ---
     std::chrono::duration<double, std::milli> random_duration = random_end - random_start;
     std::chrono::duration<double, std::milli> deterministic_duration = deterministic_end - deterministic_start;
+    std::chrono::duration<double, std::milli> non_ai_duration = non_ai_end - non_ai_start;
+    std::chrono::duration<double, std::milli> mlp_duration = mlp_end - mlp_start;
+    std::chrono::duration<double, std::milli> mlp5x5_duration = mlp5x5_end - mlp5x5_start;
     std::chrono::duration<double, std::milli> charls_duration = charls_end - charls_start;
 
     std::cout << "\n--- Speed Results (Encode) ---" << std::endl;
     std::cout << "Random Logic Time:        " << random_duration.count() << " ms" << std::endl;
     std::cout << "Deterministic Logic Time: " << deterministic_duration.count() << " ms" << std::endl;
+    std::cout << "Non-AI Best Logic Time:   " << non_ai_duration.count() << " ms" << std::endl;
+    std::cout << "MLP Predictor Time:       " << mlp_duration.count() << " ms" << std::endl;
+    std::cout << "MLP 5x5 Predictor Time:   " << mlp5x5_duration.count() << " ms" << std::endl;
     std::cout << "CharLS Time:              " << charls_duration.count() << " ms" << std::endl;
 
     return 0;

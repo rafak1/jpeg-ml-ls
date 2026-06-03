@@ -1,5 +1,5 @@
-#ifndef DETERMINISTIC_BEST_LOGIC_HPP
-#define DETERMINISTIC_BEST_LOGIC_HPP
+#ifndef NON_AI_BEST_LOGIC_HPP
+#define NON_AI_BEST_LOGIC_HPP
 
 #include "ai_logic.hpp"
 #include "loco_i.hpp"
@@ -8,15 +8,17 @@
 #include <limits>
 #include "predictors/predictor_factory.hpp"
 
-class DeterministicBestLogic final : public AILogic {
+class NonAIBestLogic final : public AILogic {
 private:
-    std::vector<PredictorType> predictor_types_;
+    std::vector<PredictorType> traditional_types_;
     std::unique_ptr<LocoIEncoder> trial_encoder_;
 
 public:
-    DeterministicBestLogic() : trial_encoder_(std::make_unique<LocoIEncoder>()) {
-        for (int type = 0; type < static_cast<int>(PredictorType::COUNT); ++type) {
-            predictor_types_.push_back(static_cast<PredictorType>(type));
+    NonAIBestLogic() : trial_encoder_(std::make_unique<LocoIEncoder>()) {
+        // Only include traditional predictors (0 to 19)
+        // MLP starts at 20
+        for (int type = 0; type < 20; ++type) {
+            traditional_types_.push_back(static_cast<PredictorType>(type));
         }
     }
 
@@ -24,7 +26,7 @@ public:
         auto best_predictor_type = PredictorType::MED;
         size_t smallest_size = std::numeric_limits<size_t>::max();
 
-        for (const auto& type : predictor_types_) {
+        for (const auto& type : traditional_types_) {
             trial_encoder_->setPredictor(PredictorFactory::create(type));
             std::vector<uint8_t> encoded_chunk = trial_encoder_->encode(chunk_content, width, height);
 
@@ -37,4 +39,4 @@ public:
     }
 };
 
-#endif // DETERMINISTIC_BEST_LOGIC_HPP
+#endif // NON_AI_BEST_LOGIC_HPP

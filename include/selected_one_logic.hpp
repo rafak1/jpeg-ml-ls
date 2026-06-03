@@ -10,9 +10,9 @@ private:
 
 public:
     explicit SelectedOneLogic(const PredictorType type): type_(type) {  }
-    std::unique_ptr<Predictor> getPredictor(const std::vector<unsigned char> &chunk_content) override {
+    std::unique_ptr<Predictor> getPredictor(const std::vector<unsigned char>& /*chunk_content*/, int /*width*/, int /*height*/) override {
         return PredictorFactory::create(type_);
-    };
+    }
 };
 
 
