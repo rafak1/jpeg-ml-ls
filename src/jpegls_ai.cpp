@@ -36,8 +36,20 @@ std::vector<uint8_t> JpeglsAI::encode(const std::vector<unsigned char>& image_da
                 chunk_data.insert(chunk_data.end(), image_data.begin() + start_index, image_data.begin() + start_index + current_chunk_width);
             }
 
-            // AI chooses a predictor for the chunk
-            std::unique_ptr<Predictor> predictor = ai_logic_->getPredictor(chunk_data, current_chunk_width, current_chunk_height);
+            // AI chooses a predictor for the chunk.
+            std::unique_ptr<Predictor> predictor;
+            if (current_chunk_width < chunk_width_ || current_chunk_height < chunk_height_) {
+                std::vector<unsigned char> padded_chunk(chunk_width_ * chunk_height_, 0);
+                for (int row = 0; row < current_chunk_height; ++row) {
+                    std::copy(chunk_data.begin() + row * current_chunk_width,
+                              chunk_data.begin() + row * current_chunk_width + current_chunk_width,
+                              padded_chunk.begin() + row * chunk_width_);
+                }
+                predictor = ai_logic_->getPredictor(padded_chunk, chunk_width_, chunk_height_);
+            } else {
+                predictor = ai_logic_->getPredictor(chunk_data, current_chunk_width, current_chunk_height);
+            }
+
             PredictorType predictor_type = predictor->getType();
             encoder_->setPredictor(std::move(predictor));
 

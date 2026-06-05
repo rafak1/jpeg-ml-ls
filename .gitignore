@@ -16,6 +16,7 @@ CMakeUserPresets.json
 build.ninja
 .cmake
 .ninja*
+*.dat
 
 # CLion
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
