@@ -9,8 +9,9 @@ class MLPPredictor final : public Predictor {
 public:
     int predict(int a, int b, int c) override {
         long long in[3] = { (long long)a - 128, (long long)b - a, (long long)c - a };
-        long long h[32];
-        for (int i = 0; i < 32; ++i) {
+        
+        long long h[64];
+        for (int i = 0; i < 64; ++i) {
             long long sum = in[0] * MLPWeights::w1[i * 3 + 0] +
                             in[1] * MLPWeights::w1[i * 3 + 1] +
                             in[2] * MLPWeights::w1[i * 3 + 2] +
@@ -19,7 +20,7 @@ public:
         }
 
         long long out = 0;
-        for (int i = 0; i < 32; ++i) {
+        for (int i = 0; i < 64; ++i) {
             out += h[i] * MLPWeights::w2[i];
         }
         out += (long long)MLPWeights::b2[0] * MLPWeights::SCALE;

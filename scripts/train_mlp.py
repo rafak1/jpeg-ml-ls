@@ -29,7 +29,7 @@ def load_data(data_dir, mode='3'):
         
         if mode == '3':
             a, b, c, p = arr[1:, :-1].flatten(), arr[:-1, 1:].flatten(), arr[:-1, :-1].flatten(), arr[1:, 1:].flatten()
-            chunk_in = np.stack([a - 128, b - a, c - a], axis=1)
+            chunk_in = np.stack([(a - 128)/128.0, (b - a)/128.0, (c - a)/128.0], axis=1)
             chunk_tar = (p - a).reshape(-1, 1)
         else:
             num_samples = 100000
@@ -40,8 +40,8 @@ def load_data(data_dir, mode='3'):
                 y, x = ys[i], xs[i]
                 ref = arr[y, x-1]
                 ctx = np.concatenate([arr[y-2, x-2:x+3], arr[y-1, x-2:x+3], arr[y, x-2:x]])
-                diffs = ctx - ref
-                diffs[-1] = ref - 128
+                diffs = (ctx - ref) / 128.0
+                diffs[-1] = (ref - 128) / 128.0
                 chunk_in.append(diffs)
                 chunk_tar.append([arr[y, x] - ref])
             chunk_in = np.array(chunk_in)
@@ -54,8 +54,11 @@ def load_data(data_dir, mode='3'):
 
 def export_weights(model, path, namespace):
     SCALE = 4096
-    w1, b1 = model.fc1.weight.detach().numpy(), model.fc1.bias.detach().numpy()
-    w2, b2 = model.fc2.weight.detach().numpy(), model.fc2.bias.detach().numpy()
+    w1 = model.fc1.weight.detach().numpy() / 128.0
+    b1 = model.fc1.bias.detach().numpy()
+    w2 = model.fc2.weight.detach().numpy()
+    b2 = model.fc2.bias.detach().numpy()
+    
     with open(path, 'w') as f:
         f.write(f"#ifndef {namespace.upper()}_HPP\n#define {namespace.upper()}_HPP\n#include <array>\n\n")
         f.write(f"namespace {namespace} {{\n")
@@ -85,7 +88,7 @@ if __name__ == "__main__":
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=10, factor=0.5)
     criterion = nn.L1Loss()
 
-    for epoch in range(15):
+    for epoch in range(15): # only 15 because bruh it takes long
         total_loss = 0
         for batch_in, batch_tar in loader:
             batch_in, batch_tar = batch_in.to(device), batch_tar.to(device)
