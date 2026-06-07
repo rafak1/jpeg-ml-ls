@@ -11,7 +11,9 @@ public:
 
     int predict(int a, int, int, const uint8_t* data, int x, int y, int width) override {
         if (!data) return a;
-        long long n[12];
+        
+        // 13 Inputs: 12 neighborhood pixels + 1 brightness reference
+        long long n[13];
         int idx = 0;
         for (int dy = -2; dy <= -1; ++dy) {
             for (int dx = -2; dx <= 2; ++dx) {
@@ -20,13 +22,13 @@ public:
             }
         }
         n[idx++] = (x - 2 >= 0) ? (int)data[y * width + x - 2] - a : -a;
-        n[idx++] = (long long)a - 128;
+        n[idx++] = (long long)a - 128; // The 13th input
 
         long long h[64];
         for (int i = 0; i < 64; ++i) {
             long long sum = (long long)MLP5x5Weights::b1[i];
-            for (int j = 0; j < 12; ++j) {
-                sum += n[j] * MLP5x5Weights::w1[i * 12 + j];
+            for (int j = 0; j < 13; ++j) {
+                sum += n[j] * MLP5x5Weights::w1[i * 13 + j];
             }
             h[i] = (sum > 0) ? sum : 0;
         }
