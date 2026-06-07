@@ -21,7 +21,6 @@ class SimpleMLP(nn.Module):
 def load_data(data_dir, mode='3'):
     inputs, targets = [], []
     image_paths = glob.glob(os.path.join(data_dir, "*.[jp][pn]g"))
-    print(f"Loading {len(image_paths)} images in mode {mode}...")
     
     for path in image_paths:
         img = Image.open(path).convert('L')
@@ -30,22 +29,21 @@ def load_data(data_dir, mode='3'):
         
         if mode == '3':
             a, b, c, p = arr[1:, :-1].flatten(), arr[:-1, 1:].flatten(), arr[:-1, :-1].flatten(), arr[1:, 1:].flatten()
-            chunk_in = np.stack([a, b, c], axis=1)
-            chunk_tar = p.reshape(-1, 1)
-        else: # mode '12'
-            # Slower but necessary for complex context
-            # Randomly sample pixels for efficiency
-            num_samples = 20000
+            chunk_in = np.stack([a - 128, b - a, c - a], axis=1)
+            chunk_tar = (p - a).reshape(-1, 1)
+        else:
+            num_samples = 100000
             ys = np.random.randint(2, h, num_samples)
             xs = np.random.randint(2, w - 2, num_samples)
-            chunk_in = []
-            chunk_tar = []
+            chunk_in, chunk_tar = [], []
             for i in range(num_samples):
                 y, x = ys[i], xs[i]
-                # Context: row y-2 (5), row y-1 (5), row y left (2)
+                ref = arr[y, x-1]
                 ctx = np.concatenate([arr[y-2, x-2:x+3], arr[y-1, x-2:x+3], arr[y, x-2:x]])
-                chunk_in.append(ctx)
-                chunk_tar.append([arr[y, x]])
+                diffs = ctx - ref
+                diffs[-1] = ref - 128
+                chunk_in.append(diffs)
+                chunk_tar.append([arr[y, x] - ref])
             chunk_in = np.array(chunk_in)
             chunk_tar = np.array(chunk_tar)
 
@@ -75,20 +73,22 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     inputs, targets = load_data(args.data_dir, args.mode)
-    
     dataset = TensorDataset(inputs.float(), targets.float())
     loader = DataLoader(dataset, batch_size=4096, shuffle=True)
 
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
+
     input_size = 3 if args.mode == '3' else 12
-    model = SimpleMLP(input_size)
+    model = SimpleMLP(input_size).to(device)
     optimizer = optim.Adam(model.parameters(), lr=0.01)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=10, factor=0.5)
-    criterion = nn.MSELoss()
+    criterion = nn.L1Loss()
 
-    print(f"Training on {len(inputs)} samples in mode {args.mode}...")
-    for epoch in range(100):
+    for epoch in range(15):
         total_loss = 0
         for batch_in, batch_tar in loader:
+            batch_in, batch_tar = batch_in.to(device), batch_tar.to(device)
             optimizer.zero_grad()
             loss = criterion(model(batch_in), batch_tar)
             loss.backward()
@@ -96,8 +96,9 @@ if __name__ == "__main__":
             total_loss += loss.item()
         avg_loss = total_loss / len(loader)
         scheduler.step(avg_loss)
-        print(f"Epoch {epoch+1}, Avg Loss: {avg_loss:.4f}, LR: {optimizer.param_groups[0]['lr']}")
+        print(f"Epoch {epoch+1}, Loss: {avg_loss:.4f}")
             
+    model.to("cpu")
     out_path = "include/predictors/mlp_weights.hpp" if args.mode == '3' else "include/predictors/mlp_5x5_weights.hpp"
     namespace = "MLPWeights" if args.mode == '3' else "MLP5x5Weights"
     export_weights(model, out_path, namespace)

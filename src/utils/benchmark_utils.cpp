@@ -73,6 +73,7 @@ void run_benchmarks(int argc, char** argv) {
     benchmark_logic("NonAIBestLogic", std::make_unique<NonAIBestLogic>(), original_image, width, height, times, sizes);
     benchmark_logic("MLP Predictor", std::make_unique<SelectedOneLogic>(PredictorType::MLP), original_image, width, height, times, sizes);
     benchmark_logic("MLP 5x5 Predictor", std::make_unique<SelectedOneLogic>(PredictorType::MLP_5X5), original_image, width, height, times, sizes);
+    benchmark_logic("Neural Blender", std::make_unique<SelectedOneLogic>(PredictorType::NEURAL_BLENDER), original_image, width, height, times, sizes);
     benchmark_logic("2-Layer Chooser AI", std::make_unique<TwoLayerChooserAILogic>(false), original_image, width, height, times, sizes);
     benchmark_logic("3-Layer Chooser AI", std::make_unique<ThreeLayerChooserAILogic>(false), original_image, width, height, times, sizes);
     benchmark_logic("CNN Chooser AI", std::make_unique<CnnChooserAILogic>(false), original_image, width, height, times, sizes);
