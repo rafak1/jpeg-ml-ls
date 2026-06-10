@@ -6,6 +6,7 @@
 #include "../config.hpp"
 #include <vector>
 #include <memory>
+#include <map>
 #include <dlib/dnn.h>
 #include <dlib/matrix.h>
 
@@ -18,8 +19,10 @@ using net_type = dlib::loss_multiclass_log<
 class TwoLayerChooserAILogic final : public AILogic {
 private:
     void load_model();
+    mutable std::map<PredictorType, int> choice_counts_;
 public:
     explicit TwoLayerChooserAILogic(bool for_training);
+    ~TwoLayerChooserAILogic() override;
 
     std::unique_ptr<Predictor> getPredictor(const std::vector<unsigned char>& chunk_content, int width, int height) override;
 

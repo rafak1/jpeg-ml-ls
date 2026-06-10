@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 import numpy as np
@@ -23,11 +24,15 @@ class BlenderNet(nn.Module):
         super().__init__()
         self.fc1 = nn.Linear(3, 16)
         self.relu = nn.LeakyReLU(0.1)
-        self.fc2 = nn.Linear(16, 3) 
-        self.softmax = nn.Softmax(dim=1)
+        self.fc2 = nn.Linear(16, 3)
 
     def forward(self, x):
-        return self.softmax(self.fc2(self.relu(self.fc1(x))))
+        # x is [(a-128)/128, (b-a)/128, (c-a)/128]
+        h = self.relu(self.fc1(x))
+        w = self.fc2(h)
+        w = torch.relu(w) # Match C++: if (w[i] < 0) w[i] = 0;
+        # Normalize weights to sum to 1
+        return w / (w.sum(dim=1, keepdim=True) + 1.0/4096.0) # Match C++: total_w = w[0]+w[1]+w[2]+1
 
 def med_predict(a, b, c):
     res = torch.zeros_like(a)
@@ -40,24 +45,42 @@ def med_predict(a, b, c):
     return res
 
 def mlp_predict_torch(a, b, c, w1, b1, w2, b2, scale):
-    # Match the C++ differential logic (Pixel = A + Delta)
-    in0, in1, in2 = (a - 128)/128.0, (b - a)/128.0, (c - a)/128.0
-    h = torch.matmul(torch.stack([in0, in1, in2], dim=1), w1.T) + b1
-    h = torch.clamp(h, min=0)
-    # Output layer gives normalized delta
-    out = torch.matmul(h, w2.T) + b2 * scale
-    delta = (out / scale).squeeze()
-    return a + (delta * 128.0) # Scale back to pixel delta
+    # Simulate C++ MLPPredictor::predict logic
+    # long long in[3] = { a - 128, b - a, c - a };
+    in_raw = torch.stack([a - 128, b - a, c - a], dim=1)
+    
+    # sum = in[0]*w1 + in[1]*w1 + in[2]*w1 + b1
+    h = torch.matmul(in_raw, w1.T) + b1
+    
+    # h[i] = (sum > 0) ? sum : sum / 10;
+    h = F.leaky_relu(h, 0.1)
+    
+    # out = h * w2 + b2 * SCALE
+    out = torch.matmul(h, w2.T) + b2.unsqueeze(0) * scale
+    
+    # delta = (out + scale2/2) / scale2
+    delta = out / (scale * scale)
+    
+    return a + delta.squeeze()
 
 def load_data(data_dir):
     inputs, targets = [], []
     image_paths = glob.glob(os.path.join(data_dir, "*.[jp][pn]g"))
     for path in image_paths:
+        print(f"Loading {os.path.basename(path)}...")
         img = Image.open(path).convert('L')
         arr = np.array(img, dtype=np.float32)
         a, b, c, p = arr[1:, :-1].flatten(), arr[:-1, 1:].flatten(), arr[:-1, :-1].flatten(), arr[1:, 1:].flatten()
-        inputs.append(np.stack([a, b, c], axis=1))
-        targets.append(p.reshape(-1, 1))
+        c_in = np.stack([a, b, c], axis=1)
+        c_tar = p.reshape(-1, 1)
+
+        if c_in.shape[0] > 100000:
+            stride = c_in.shape[0] // 100000
+            c_in = c_in[::stride]
+            c_tar = c_tar[::stride]
+
+        inputs.append(c_in)
+        targets.append(c_tar)
     return torch.tensor(np.vstack(inputs)), torch.tensor(np.vstack(targets))
 
 if __name__ == "__main__":
@@ -68,8 +91,8 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Blender using device: {device}")
 
+    # Load fixed MLP weights
     mlp_w1 = torch.tensor(parse_hpp_array("include/predictors/mlp_weights.hpp", "w1")).reshape(-1, 3)
-    hidden_size = mlp_w1.shape[0]
     mlp_b1 = torch.tensor(parse_hpp_array("include/predictors/mlp_weights.hpp", "b1"))
     mlp_w2 = torch.tensor(parse_hpp_array("include/predictors/mlp_weights.hpp", "w2")).reshape(1, -1)
     mlp_b2 = torch.tensor(parse_hpp_array("include/predictors/mlp_weights.hpp", "b2"))
@@ -85,9 +108,8 @@ if __name__ == "__main__":
     
     mlp_w1, mlp_b1, mlp_w2, mlp_b2 = mlp_w1.to(device), mlp_b1.to(device), mlp_w2.to(device), mlp_b2.to(device)
 
-    for epoch in range(15):
+    for epoch in range(10):
         total_loss = 0
-        all_preds, all_tars = [], []
         for batch_in, batch_tar in loader:
             batch_in, batch_tar = batch_in.to(device), batch_tar.to(device)
             a, b, c = batch_in[:, 0], batch_in[:, 1], batch_in[:, 2]
@@ -98,7 +120,8 @@ if __name__ == "__main__":
                 p2 = torch.clamp(a + b - c, 0, 255)
             
             optimizer.zero_grad()
-            # Normalize blender inputs
+            # Normalize blender inputs to match C++ 'in' logic if we were using it there
+            # But C++ uses raw 'in' for blender too.
             norm_in = torch.stack([(a-128)/128.0, (b-a)/128.0, (c-a)/128.0], dim=1)
             weights = model(norm_in)
             
@@ -107,32 +130,26 @@ if __name__ == "__main__":
             final_p = final_p.unsqueeze(1)
             
             # Loss on normalized scale (relative to A)
-            norm_final = (final_p - a.unsqueeze(1)) / 128.0
-            norm_tar = (batch_tar - a.unsqueeze(1)) / 128.0
-            
-            loss = criterion(norm_final, norm_tar)
+            loss = criterion((final_p - a.unsqueeze(1))/128.0, (batch_tar - a.unsqueeze(1))/128.0)
             loss.backward()
             optimizer.step()
             total_loss += loss.item()
             
-            all_preds.append(norm_final.detach().cpu())
-            all_tars.append(norm_tar.detach().cpu())
-            
-        avg_loss = total_loss / len(loader)
-        p_std = torch.cat(all_preds).std().item()
-        t_std = torch.cat(all_tars).std().item()
-        print(f"Epoch {epoch+1}, Loss: {avg_loss:.6f} | Pred StdDev: {p_std:.4f} (Target StdDev: {t_std:.4f})")
+        print(f"Epoch {epoch+1}, Loss: {total_loss / len(loader):.6f}")
 
     model.to("cpu")
     SCALE = 4096
-    w1, b1 = model.fc1.weight.detach().numpy() / 128.0 # Normalization compensation
-    w2, b2 = model.fc2.weight.detach().numpy(), model.fc2.bias.detach().numpy()
+    # Export with correct scaling for C++
+    w1 = (model.fc1.weight.detach().numpy() / 128.0) * SCALE
+    b1 = model.fc1.bias.detach().numpy() * SCALE
+    w2 = model.fc2.weight.detach().numpy() * SCALE
+    b2 = model.fc2.bias.detach().numpy() * SCALE
     
     with open("include/predictors/blender_weights.hpp", "w") as f:
         f.write("#ifndef BLENDER_WEIGHTS_HPP\n#define BLENDER_WEIGHTS_HPP\n#include <array>\nnamespace BlenderWeights {\n")
         f.write(f"  static constexpr int SCALE = {SCALE};\n")
-        f.write(f"  static constexpr std::array<int, {w1.size}> w1 = {{ {', '.join(map(str, (w1*SCALE).astype(int).flatten()))} }};\n")
-        f.write(f"  static constexpr std::array<int, {b1.size}> b1 = {{ {', '.join(map(str, (b1*SCALE).astype(int).flatten()))} }};\n")
-        f.write(f"  static constexpr std::array<int, {w2.size}> w2 = {{ {', '.join(map(str, (w2*SCALE).astype(int).flatten()))} }};\n")
-        f.write(f"  static constexpr std::array<int, {b2.size}> b2 = {{ {', '.join(map(str, (b2*SCALE).astype(int).flatten()))} }};\n")
+        f.write(f"  static constexpr std::array<int, {w1.size}> w1 = {{ {', '.join(map(str, w1.astype(int).flatten()))} }};\n")
+        f.write(f"  static constexpr std::array<int, {b1.size}> b1 = {{ {', '.join(map(str, b1.astype(int).flatten()))} }};\n")
+        f.write(f"  static constexpr std::array<int, {w2.size}> w2 = {{ {', '.join(map(str, w2.astype(int).flatten()))} }};\n")
+        f.write(f"  static constexpr std::array<int, {b2.size}> b2 = {{ {', '.join(map(str, b2.astype(int).flatten()))} }};\n")
         f.write("}\n#endif\n")

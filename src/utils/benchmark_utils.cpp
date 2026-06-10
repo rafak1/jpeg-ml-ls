@@ -3,6 +3,7 @@
 #include "random_ai_logic.hpp"
 #include "deterministic_best_logic.hpp"
 #include "non_ai_best_logic.hpp"
+#include "base_med_logic.hpp"
 #include "selected_one_logic.hpp"
 #include "ai/2_layer_chooser_ai_logic.hpp"
 #include "ai/3_layer_chooser_ai_logic.hpp"
@@ -69,6 +70,7 @@ void run_benchmarks(int argc, char** argv) {
     std::vector<std::pair<std::string, size_t>> sizes;
 
     benchmark_logic("RandomAILogic", std::make_unique<RandomAILogic>(), original_image, width, height, times, sizes);
+    benchmark_logic("Base MED", std::make_unique<BaseMEDLogic>(), original_image, width, height, times, sizes);
     benchmark_logic("DeterministicBestLogic", std::make_unique<DeterministicBestLogic>(), original_image, width, height, times, sizes);
     benchmark_logic("NonAIBestLogic", std::make_unique<NonAIBestLogic>(), original_image, width, height, times, sizes);
     benchmark_logic("MLP Predictor", std::make_unique<SelectedOneLogic>(PredictorType::MLP), original_image, width, height, times, sizes);

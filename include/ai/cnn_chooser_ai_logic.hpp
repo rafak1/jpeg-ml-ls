@@ -5,6 +5,7 @@
 #include "../predictors/predictor.hpp"
 #include <vector>
 #include <memory>
+#include <map>
 #include <dlib/dnn.h>
 #include <dlib/matrix.h>
 
@@ -19,8 +20,10 @@ using cnn_net_type = dlib::loss_multiclass_log<dlib::fc<20,
 class CnnChooserAILogic : public AILogic {
 private:
     void load_model();
+    mutable std::map<PredictorType, int> choice_counts_;
 public:
     CnnChooserAILogic(bool load_model);
+    ~CnnChooserAILogic() override;
 
     std::unique_ptr<Predictor> getPredictor(const std::vector<unsigned char>& chunk_content, int width, int height) override;
 

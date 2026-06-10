@@ -10,6 +10,17 @@ CnnChooserAILogic::CnnChooserAILogic(bool loadModel) {
     load_model();
 }
 
+CnnChooserAILogic::~CnnChooserAILogic() {
+    if (choice_counts_.empty()) return;
+    std::cout << "\n--- Statistics for CNN Chooser AI ---" << std::endl;
+    int total = 0;
+    for (auto const& [type, count] : choice_counts_) total += count;
+    for (auto const& [type, count] : choice_counts_) {
+        std::cout << "  " << predictorTypeToString(type) << ": " << count 
+                  << " (" << (100.0 * count / total) << "%)" << std::endl;
+    }
+}
+
 void CnnChooserAILogic::load_model() {
     if (const std::string path = "cnn_predictor_model.dat"; std::filesystem::exists(path)) {
         dlib::deserialize(path) >> model;
@@ -27,5 +38,7 @@ std::unique_ptr<Predictor> CnnChooserAILogic::getPredictor(const std::vector<uns
     }
 
     unsigned long predicted_class = model(input_mat);
-    return PredictorFactory::create(static_cast<PredictorType>(predicted_class));
+    PredictorType type = static_cast<PredictorType>(predicted_class);
+    choice_counts_[type]++;
+    return PredictorFactory::create(type);
 }

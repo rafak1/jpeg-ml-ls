@@ -10,6 +10,17 @@ ThreeLayerChooserAILogic::ThreeLayerChooserAILogic(bool loadModel) {
     load_model();
 }
 
+ThreeLayerChooserAILogic::~ThreeLayerChooserAILogic() {
+    if (choice_counts_.empty()) return;
+    std::cout << "\n--- Statistics for 3-Layer Chooser AI ---" << std::endl;
+    int total = 0;
+    for (auto const& [type, count] : choice_counts_) total += count;
+    for (auto const& [type, count] : choice_counts_) {
+        std::cout << "  " << predictorTypeToString(type) << ": " << count 
+                  << " (" << (100.0 * count / total) << "%)" << std::endl;
+    }
+}
+
 void ThreeLayerChooserAILogic::load_model() {
     if (const std::string path = "3_layer_fc_logic_model.dat"; std::filesystem::exists(path)) {
         dlib::deserialize(path) >> model;
@@ -25,5 +36,7 @@ std::unique_ptr<Predictor> ThreeLayerChooserAILogic::getPredictor(const std::vec
     }
 
     unsigned long predicted_class = model(input_mat);
-    return PredictorFactory::create(static_cast<PredictorType>(predicted_class));
+    PredictorType type = static_cast<PredictorType>(predicted_class);
+    choice_counts_[type]++;
+    return PredictorFactory::create(type);
 }

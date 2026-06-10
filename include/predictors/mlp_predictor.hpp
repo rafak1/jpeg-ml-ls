@@ -9,14 +9,13 @@ class MLPPredictor final : public Predictor {
 public:
     int predict(int a, int b, int c) override {
         long long in[3] = { (long long)a - 128, (long long)b - a, (long long)c - a };
-        
         long long h[64];
         for (int i = 0; i < 64; ++i) {
-            long long sum = in[0] * MLPWeights::w1[i * 3 + 0] +
-                            in[1] * MLPWeights::w1[i * 3 + 1] +
-                            in[2] * MLPWeights::w1[i * 3 + 2] +
-                            (long long)MLPWeights::b1[i];
-            h[i] = (sum > 0) ? sum : 0;
+            long long sum = (long long)MLPWeights::b1[i];
+            for (int j = 0; j < 3; ++j) {
+                sum += in[j] * MLPWeights::w1[i * 3 + j];
+            }
+            h[i] = (sum > 0) ? sum : sum / 10;
         }
 
         long long out = 0;
