@@ -7,6 +7,8 @@
 #include "gradient_predictor.hpp"
 #include "blender_weights.hpp"
 #include <algorithm>
+#include <iostream>
+#include <iomanip>
 
 class NeuralBlenderPredictor final : public Predictor {
 private:
@@ -14,16 +16,32 @@ private:
     MLPPredictor mlp_;
     GradientPredictor grad_;
 
+    static inline long double total_w0 = 0, total_w1 = 0, total_w2 = 0;
+    static inline long long total_pixels = 0;
+
+    struct StatsReporter {
+        ~StatsReporter() {
+            if (total_pixels == 0) return;
+            std::cout << "\n--- Statistics for Neural Blender ---" << std::endl;
+            std::cout << std::fixed << std::setprecision(2);
+            std::cout << "  Average Weight MED:      " << (total_w0 / total_pixels) * 100.0 << "%" << std::endl;
+            std::cout << "  Average Weight MLP:      " << (total_w1 / total_pixels) * 100.0 << "%" << std::endl;
+            std::cout << "  Average Weight Gradient: " << (total_w2 / total_pixels) * 100.0 << "%" << std::endl;
+            std::cout << "  Total Pixels Processed:  " << total_pixels << std::endl;
+        }
+    };
+    static inline StatsReporter reporter;
+
 public:
     int predict(int a, int b, int c) override {
         long long in[3] = { (long long)a - 128, (long long)b - a, (long long)c - a };
         long long h[16];
         for (int i = 0; i < 16; ++i) {
-            long long sum = in[0] * BlenderWeights::w1[i * 3 + 0] +
-                            in[1] * BlenderWeights::w1[i * 3 + 1] +
-                            in[2] * BlenderWeights::w1[i * 3 + 2] +
-                            (long long)BlenderWeights::b1[i];
-            h[i] = (sum > 0) ? sum : 0;
+            long long sum = (long long)BlenderWeights::b1[i];
+            for (int j = 0; j < 3; ++j) {
+                sum += in[j] * BlenderWeights::w1[i * 3 + j];
+            }
+            h[i] = (sum > 0) ? sum : sum / 10;
         }
 
         long long w[3];
@@ -36,6 +54,13 @@ public:
         }
 
         long long total_w = w[0] + w[1] + w[2] + 1;
+        
+        // Accumulate relative weights for statistics
+        total_w0 += (long double)w[0] / total_w;
+        total_w1 += (long double)w[1] / total_w;
+        total_w2 += (long double)w[2] / total_w;
+        total_pixels++;
+
         long long p0 = med_.predict(a, b, c);
         long long p1 = mlp_.predict(a, b, c);
         long long p2 = grad_.predict(a, b, c);
@@ -44,7 +69,7 @@ public:
         return std::clamp((int)val, 0, 255);
     }
 
-    [[nodiscard]] PredictorType getType() const override { return PredictorType::MED; }
+    [[nodiscard]] PredictorType getType() const override { return PredictorType::NEURAL_BLENDER; }
 };
 
 #endif

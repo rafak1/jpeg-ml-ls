@@ -26,9 +26,38 @@ enum class PredictorType {
     MIDRANGE = 19,
     MLP = 20,
     MLP_5X5 = 21,
-    COUNT = 22,
-    NEURAL_BLENDER = 23
+    NEURAL_BLENDER = 22,
+    COUNT = 22
 };
+
+inline const char* predictorTypeToString(PredictorType type) {
+    switch (type) {
+        case PredictorType::MED: return "MED";
+        case PredictorType::PAETH: return "PAETH";
+        case PredictorType::LEFT: return "LEFT";
+        case PredictorType::TOP: return "TOP";
+        case PredictorType::TOP_LEFT: return "TOP_LEFT";
+        case PredictorType::AVERAGE_LEFT_TOP: return "AVG_LEFT_TOP";
+        case PredictorType::DPCM: return "DPCM";
+        case PredictorType::GRADIENT: return "GRADIENT";
+        case PredictorType::JPEG5: return "JPEG5";
+        case PredictorType::JPEG6: return "JPEG6";
+        case PredictorType::STRICT_MEDIAN: return "STRICT_MED";
+        case PredictorType::MULTIPLICATIVE: return "MULTIPLICATIVE";
+        case PredictorType::PLANAR_BALANCED: return "PLANAR_BAL";
+        case PredictorType::ASYMMETRIC_TEXTURE: return "ASYM_TEXTURE";
+        case PredictorType::HORIZ_SHARP: return "HORIZ_SHARP";
+        case PredictorType::VERT_SHARP: return "VERT_SHARP";
+        case PredictorType::MAX_FILTER: return "MAX_FILTER";
+        case PredictorType::MIN_FILTER: return "MIN_FILTER";
+        case PredictorType::HARMONIC_MEAN: return "HARMONIC_MEAN";
+        case PredictorType::MIDRANGE: return "MIDRANGE";
+        case PredictorType::MLP: return "MLP";
+        case PredictorType::MLP_5X5: return "MLP_5X5";
+        case PredictorType::NEURAL_BLENDER: return "NEURAL_BLENDER";
+        default: return "Unknown";
+    }
+}
 
 class Predictor {
 public:

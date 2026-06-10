@@ -17,36 +17,47 @@ class SimpleMLP(nn.Module):
 
     def forward(self, x):
         return self.fc2(self.relu(self.fc1(x)))
-
 def load_data(data_dir, mode='3'):
     inputs, targets = [], []
     image_paths = glob.glob(os.path.join(data_dir, "*.[jp][pn]g"))
-    
+
     for path in image_paths:
+        print(f"Loading {os.path.basename(path)}...")
         img = Image.open(path).convert('L')
         arr = np.array(img, dtype=np.float32)
         h, w = arr.shape
-        
+
         if mode == '3':
             a, b, c, p = arr[1:, :-1].flatten(), arr[:-1, 1:].flatten(), arr[:-1, :-1].flatten(), arr[1:, 1:].flatten()
-            chunk_in = np.stack([(a - 128)/128.0, (b - a)/128.0, (c - a)/128.0], axis=1)
-            chunk_tar = ((p - a) / 128.0).reshape(-1, 1)
+            c_in = np.stack([(a - 128)/128.0, (b - a)/128.0, (c - a)/128.0], axis=1)
+            c_tar = ((p - a) / 128.0).reshape(-1, 1)
         else:
-            num_samples = 100000
-            ys = np.random.randint(2, h, num_samples)
-            xs = np.random.randint(2, w - 2, num_samples)
-            chunk_in, chunk_tar = [], []
-            for i in range(num_samples):
-                y, x = ys[i], xs[i]
-                ref = arr[y, x-1]
-                ctx = np.concatenate([arr[y-2, x-2:x+3], arr[y-1, x-2:x+3], arr[y, x-2:x]])
-                chunk_in.append(np.append((ctx - ref)/128.0, (ref - 128)/128.0))
-                chunk_tar.append([(arr[y, x] - ref) / 128.0])
-            chunk_in = np.array(chunk_in)
-            chunk_tar = np.array(chunk_tar)
+            ref = np.zeros_like(arr)
+            ref[:, 1:] = arr[:, :-1]
+            ref[1:, 0] = arr[:-1, 0]
+            ref[0, 0] = 0
 
-        inputs.append(chunk_in)
-        targets.append(chunk_tar)
+            padded = np.pad(arr, ((2, 0), (2, 2)), mode='constant', constant_values=0)
+
+            ctx = []
+            for dy in range(2): 
+                for dx in range(5):
+                    ctx.append((padded[dy:dy+h, dx:dx+w] - ref).flatten())
+
+            ctx.append((padded[2:2+h, 0:w] - ref).flatten())
+            ctx.append(np.zeros(h*w, dtype=np.float32))
+            ctx.append((ref - 128).flatten())
+
+            c_in = np.stack(ctx, axis=-1) / 128.0
+            c_tar = ((arr - ref) / 128.0).reshape(-1, 1)
+
+        if c_in.shape[0] > 100000:
+            stride = c_in.shape[0] // 100000
+            c_in = c_in[::stride]
+            c_tar = c_tar[::stride]
+
+        inputs.append(c_in)
+        targets.append(c_tar)
             
     return torch.tensor(np.vstack(inputs)), torch.tensor(np.vstack(targets))
 
@@ -81,12 +92,15 @@ if __name__ == "__main__":
     print(f"Using device: {device}")
 
     input_size = 3 if args.mode == '3' else 13
-    model = SimpleMLP(input_size).to(device)
-    optimizer = optim.Adam(model.parameters(), lr=0.01)
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=5, factor=0.5)
+    hidden_size = 64 if args.mode == '3' else 128
+    model = SimpleMLP(input_size, hidden_size).to(device)
+    lr = 0.01 if args.mode == '3' else 0.005
+    epochs = 15 if args.mode == '3' else 20
+    optimizer = optim.Adam(model.parameters(), lr=lr)
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=3, factor=0.5)
     criterion = nn.L1Loss()
 
-    for epoch in range(15):
+    for epoch in range(epochs):
         total_loss = 0
         all_preds, all_tars = [], []
         for batch_in, batch_tar in loader:
