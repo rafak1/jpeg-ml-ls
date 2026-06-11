@@ -8,6 +8,9 @@
 #include "ai/2_layer_chooser_ai_logic.hpp"
 #include "ai/3_layer_chooser_ai_logic.hpp"
 #include "ai/cnn_chooser_ai_logic.hpp"
+#include "ai/2_layer_chooser_with_all_ai_logic.hpp"
+#include "ai/3_layer_chooser_with_all_ai_logic.hpp"
+#include "ai/cnn_chooser_with_all_ai_logic.hpp"
 #include "config.hpp"
 #include <charls/charls.h>
 #include <iostream>
@@ -76,9 +79,14 @@ void run_benchmarks(int argc, char** argv) {
     benchmark_logic("MLP Predictor", std::make_unique<SelectedOneLogic>(PredictorType::MLP), original_image, width, height, times, sizes);
     benchmark_logic("MLP 5x5 Predictor", std::make_unique<SelectedOneLogic>(PredictorType::MLP_5X5), original_image, width, height, times, sizes);
     benchmark_logic("Neural Blender", std::make_unique<SelectedOneLogic>(PredictorType::NEURAL_BLENDER), original_image, width, height, times, sizes);
+
     benchmark_logic("2-Layer Chooser AI", std::make_unique<TwoLayerChooserAILogic>(false), original_image, width, height, times, sizes);
     benchmark_logic("3-Layer Chooser AI", std::make_unique<ThreeLayerChooserAILogic>(false), original_image, width, height, times, sizes);
     benchmark_logic("CNN Chooser AI", std::make_unique<CnnChooserAILogic>(false), original_image, width, height, times, sizes);
+
+    benchmark_logic("2-Layer Chooser AI (All)", std::make_unique<TwoLayerChooserWithAllAILogic>(false), original_image, width, height, times, sizes);
+    benchmark_logic("3-Layer Chooser AI (All)", std::make_unique<ThreeLayerChooserWithAllAILogic>(false), original_image, width, height, times, sizes);
+    benchmark_logic("CNN Chooser AI (All)", std::make_unique<CnnChooserWithAllAILogic>(false), original_image, width, height, times, sizes);
 
     // --- CharLS Implementation ---
     std::cout << "\n--- Compressing with CharLS Library ---" << std::endl;

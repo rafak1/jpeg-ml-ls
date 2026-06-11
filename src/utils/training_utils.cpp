@@ -2,6 +2,9 @@
 #include "ai/2_layer_chooser_ai_logic.hpp"
 #include "ai/3_layer_chooser_ai_logic.hpp"
 #include "ai/cnn_chooser_ai_logic.hpp"
+#include "ai/2_layer_chooser_with_all_ai_logic.hpp"
+#include "ai/3_layer_chooser_with_all_ai_logic.hpp"
+#include "ai/cnn_chooser_with_all_ai_logic.hpp"
 #include "predictors/predictor_factory.hpp"
 #include "config.hpp"
 
@@ -17,8 +20,6 @@
 namespace fs = std::filesystem;
 
 namespace {
-    const int NUM_PREDICTORS = 20;
-
     struct ImageData {
         std::vector<unsigned char> pixels;
         int width;
@@ -39,9 +40,10 @@ namespace {
         return {image, width, height};
     }
 
-    void get_training_data_fc(std::vector<dlib::matrix<float>>& samples, std::vector<unsigned long>& labels) {
+    void get_training_data_fc(std::vector<dlib::matrix<float>>& samples, std::vector<unsigned long>& labels, bool all_predictors) {
         std::vector<std::unique_ptr<Predictor>> predictors;
-        for (int i = 0; i < NUM_PREDICTORS; ++i) {
+        int num_predictors = all_predictors ? static_cast<int>(PredictorType::COUNT) : 20;
+        for (int i = 0; i < num_predictors; ++i) {
             predictors.push_back(PredictorFactory::create(static_cast<PredictorType>(i)));
         }
 
@@ -65,7 +67,7 @@ namespace {
                         long best_predictor_index = -1;
                         long min_error = -1;
 
-                        for (int i = 0; i < NUM_PREDICTORS; ++i) {
+                        for (int i = 0; i < num_predictors; ++i) {
                             long current_error = 0;
 
                             for (int cy = 0; cy < CHUNK_SIZE; ++cy) {
@@ -102,9 +104,10 @@ namespace {
         }
     }
 
-    void get_training_data_cnn(std::vector<dlib::matrix<unsigned char>>& samples, std::vector<unsigned long>& labels) {
+    void get_training_data_cnn(std::vector<dlib::matrix<unsigned char>>& samples, std::vector<unsigned long>& labels, bool all_predictors) {
         std::vector<std::unique_ptr<Predictor>> predictors;
-        for (int i = 0; i < NUM_PREDICTORS; ++i) {
+        int num_predictors = all_predictors ? static_cast<int>(PredictorType::COUNT) : 20;
+        for (int i = 0; i < num_predictors; ++i) {
             predictors.push_back(PredictorFactory::create(static_cast<PredictorType>(i)));
         }
 
@@ -132,7 +135,7 @@ namespace {
                         long best_predictor_index = -1;
                         long min_error = -1;
 
-                        for (int i = 0; i < NUM_PREDICTORS; ++i) {
+                        for (int i = 0; i < num_predictors; ++i) {
                             long current_error = 0;
 
                             for (int cy = 0; cy < CHUNK_SIZE; ++cy) {
@@ -180,7 +183,7 @@ void train_2_layer_model() {
     std::vector<dlib::matrix<float>> samples;
     std::vector<unsigned long> labels;
     std::cout << "Loading FC training data..." << std::endl;
-    get_training_data_fc(samples, labels);
+    get_training_data_fc(samples, labels, false);
 
     TwoLayerChooserAILogic logic(true);
     dlib::dnn_trainer<net_type, dlib::adam> trainer(logic.model);
@@ -195,7 +198,7 @@ void train_3_layer_model() {
     std::vector<dlib::matrix<float>> samples;
     std::vector<unsigned long> labels;
     std::cout << "Loading FC training data..." << std::endl;
-    get_training_data_fc(samples, labels);
+    get_training_data_fc(samples, labels, false);
 
     ThreeLayerChooserAILogic logic(true);
     dlib::dnn_trainer<net_type_3_layer, dlib::adam> trainer(logic.model);
@@ -210,7 +213,7 @@ void train_cnn_model() {
     std::vector<dlib::matrix<unsigned char>> samples;
     std::vector<unsigned long> labels;
     std::cout << "Loading CNN training data..." << std::endl;
-    get_training_data_cnn(samples, labels);
+    get_training_data_cnn(samples, labels, false);
 
     CnnChooserAILogic logic(true);
     dlib::dnn_trainer<cnn_net_type, dlib::adam> trainer(logic.model);
@@ -218,4 +221,49 @@ void train_cnn_model() {
     logic.model.clean();
     dlib::serialize("cnn_predictor_model.dat") << logic.model;
     std::cout << "CNN Model saved to cnn_predictor_model.dat" << std::endl;
+}
+
+void train_2_layer_model_all() {
+    std::cout << "\n--- Training 2-Layer FC Model (All Predictors) ---" << std::endl;
+    std::vector<dlib::matrix<float>> samples;
+    std::vector<unsigned long> labels;
+    std::cout << "Loading FC training data..." << std::endl;
+    get_training_data_fc(samples, labels, true);
+
+    TwoLayerChooserWithAllAILogic logic(true);
+    dlib::dnn_trainer<net_type_all, dlib::adam> trainer(logic.model);
+    setup_and_run_trainer(trainer, samples, labels);
+    logic.model.clean();
+    dlib::serialize("2_layer_fc_for_all_logic_model.dat") << logic.model;
+    std::cout << "2-Layer FC Model saved to 2_layer_fc_for_all_logic_model.dat" << std::endl;
+}
+
+void train_3_layer_model_all() {
+    std::cout << "\n--- Training 3-Layer FC Model (All Predictors) ---" << std::endl;
+    std::vector<dlib::matrix<float>> samples;
+    std::vector<unsigned long> labels;
+    std::cout << "Loading FC training data..." << std::endl;
+    get_training_data_fc(samples, labels, true);
+
+    ThreeLayerChooserWithAllAILogic logic(true);
+    dlib::dnn_trainer<three_layer_net_type_all, dlib::adam> trainer(logic.model);
+    setup_and_run_trainer(trainer, samples, labels);
+    logic.model.clean();
+    dlib::serialize("3_layer_fc_for_all_logic_model.dat") << logic.model;
+    std::cout << "3-Layer FC Model saved to 3_layer_fc_for_all_logic_model.dat" << std::endl;
+}
+
+void train_cnn_model_all() {
+    std::cout << "\n--- Training CNN Model (All Predictors) ---" << std::endl;
+    std::vector<dlib::matrix<unsigned char>> samples;
+    std::vector<unsigned long> labels;
+    std::cout << "Loading CNN training data..." << std::endl;
+    get_training_data_cnn(samples, labels, true);
+
+    CnnChooserWithAllAILogic logic(true);
+    dlib::dnn_trainer<cnn_net_type_all, dlib::adam> trainer(logic.model);
+    setup_and_run_trainer(trainer, samples, labels);
+    logic.model.clean();
+    dlib::serialize("cnn_for_all_logic_model.dat") << logic.model;
+    std::cout << "CNN Model saved to cnn_for_all_logic_model.dat" << std::endl;
 }
