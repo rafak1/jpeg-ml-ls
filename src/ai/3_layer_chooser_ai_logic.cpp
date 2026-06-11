@@ -4,9 +4,9 @@
 #include <iostream>
 #include <filesystem>
 
-ThreeLayerChooserAILogic::ThreeLayerChooserAILogic(bool loadModel) {
-    if (!loadModel)
-            return;
+ThreeLayerChooserAILogic::ThreeLayerChooserAILogic(bool for_training) {
+    if (for_training)
+        return;
     load_model();
 }
 

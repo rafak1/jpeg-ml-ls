@@ -67,6 +67,9 @@ add_library(jpeglsai STATIC
         src/loco_i.cpp
         src/bit_stream.cpp
         src/ai/2_layer_chooser_ai_logic.cpp
+        src/ai/2_layer_chooser_with_all_ai_logic.cpp
+        src/ai/3_layer_chooser_with_all_ai_logic.cpp
+        src/ai/cnn_chooser_with_all_ai_logic.cpp
         src/ai/3_layer_chooser_ai_logic.cpp
         src/ai/cnn_chooser_ai_logic.cpp
         src/utils/training_utils.cpp
@@ -87,6 +90,15 @@ add_executable(train_3_layer_fc_predictor src/train_3_layer_fc_logic_model.cpp)
 target_link_libraries(train_3_layer_fc_predictor PRIVATE jpeglsai charls dlib::dlib)
 
 add_executable(train_cnn_predictor src/train_cnn_predictor_logic_model.cpp)
+target_link_libraries(train_cnn_predictor PRIVATE jpeglsai charls dlib::dlib)
+
+add_executable(train_2_layer_fc_predictor_for_all src/train_2_layer_chooser_with_all_ai_logic.cpp)
+target_link_libraries(train_2_layer_fc_predictor PRIVATE jpeglsai charls dlib::dlib)
+
+add_executable(train_3_layer_fc_predictor_for_all src/train_3_layer_chooser_with_all_ai_logic.cpp)
+target_link_libraries(train_3_layer_fc_predictor PRIVATE jpeglsai charls dlib::dlib)
+
+add_executable(train_cnn_predictor_for_all src/train_cnn_chooser_with_all_ai_logic.cpp)
 target_link_libraries(train_cnn_predictor PRIVATE jpeglsai charls dlib::dlib)
 
 # Wrapper to train and run benchmarks
